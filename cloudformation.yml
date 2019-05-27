@@ -1,0 +1,80 @@
+﻿AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  lambdaInvocationRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaRole'
+      AssumeRolePolicyDocument: >-
+        {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"apigateway.amazonaws.com"},"Action":"sts:AssumeRole"}]}
+
+  lambdaRuntimeRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument: >-
+        {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}
+
+  atomiserApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: 'booru-atomiser'
+      MinimumCompressionSize: 1
+
+  atomiserApiDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    Properties:
+      RestApiId: !Ref atomiserApi
+      StageName: 'latest'
+      StageDescription:
+        ThrottlingRateLimit: 3
+        ThrottlingBurstLimit: 2
+    DependsOn:
+      - atomiserBooruPostIndexMethod
+
+  atomiserBooruPostIndex:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref atomiserApi
+      PathPart: 'post-index'
+      ParentId: !GetAtt
+        - atomiserApi
+        - RootResourceId
+
+  atomiserBooruPostIndexDomainKey:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref atomiserApi
+      PathPart: '{domainKey}'
+      ParentId: !Ref atomiserBooruPostIndex
+
+  atomiserBooruPostIndexMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref atomiserApi
+      ResourceId: !Ref atomiserBooruPostIndexDomainKey
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Credentials: !GetAtt lambdaInvocationRole.Arn
+        Uri: !Sub 
+          - >-
+            arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${arn}/invocations
+          - arn:
+              'Fn::GetAtt':
+                - atomiserBooruPostIndexRequHandler
+                - Arn
+
+  atomiserBooruPostIndexRequHandler:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.handleLambdaProxyRequest
+      Role: !GetAtt lambdaRuntimeRole.Arn
+      Runtime: nodejs8.10 #nodejs10.x
+      Timeout: 30
+      Code:
+        ZipFile: >-
+          ;

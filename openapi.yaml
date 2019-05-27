@@ -1,0 +1,54 @@
+# https://app.swaggerhub.com/apis-docs/bipface/booru-atomiser
+
+openapi: 3.0.1
+info:
+  title: Booru Atomiser
+  version: 1.0.0
+paths:
+  '/booru-atomiser/post-index/{domain}':
+    get:
+      responses:
+        '200':
+          description: 'Atom feed'
+          content:
+            'application/atom+xml':
+              example: >-
+                <feed xmlns='http://www.w3.org/2005/Atom'/>
+      description: >-
+        Performs a Booru gallery search and formats the results as an [Atom](https://en.wikipedia.org/wiki/Atom_%28Web_standard%29) feed.
+      parameters:
+        - name: domain
+          in: path
+          description: 'Target gallery'
+          required: true
+          schema:
+            type: string
+            enum: ['r34xxx', 'gelbooru']
+        - name: tags
+          in: query
+          description: 'Search expression'
+          example: 'blue_fur -lucario id:>2000000 sort:width:desc'
+          required: false
+          schema:
+            type: string
+            pattern: '^\s*(\S+(\s+\S+)*)?\s*$'
+        - name: page
+          in: query
+          description: >-
+            Corresponds to the `page` or `pid` parameter of the upstream API.
+            Check the target gallery's relevant documentation for supported syntax.
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: >-
+            Maximum number of results to retrieve.
+            Corresponds to the `limit` parameter of the upstream API.
+            If not specified, the value will be whatever the target gallery defaults to.
+            The upstream API may also impose a maximum value — check the target gallery's relevant documentation.
+          required: false
+          schema:
+            type: string
+            minimum: 0
+            maximum: 1000
