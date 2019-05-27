@@ -8,5 +8,9 @@ Featuring:
 
 Requires NodeJS 10 or later (Lambda must be manually configured and uploaded after deploying CloudFormation stack).
 
+Galleries currently supported:
+- gelbooru
+- rule34.xxx
+
 Dependencies:
 - [stream-json](https://www.npmjs.com/package/stream-json).
