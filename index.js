@@ -123,11 +123,11 @@ const handleRequest = function(
 };
 
 const handleException = function(method, requHeaders, err) {
+	console.error(err);
+
 	assert(typeof method === `string`);
 	assert(typeof requHeaders === `object` && requHeaders !== null);
 	assert(err instanceof Error);
-
-	console.error(err);
 
 	let resp = {
 		statusCode : 500,
@@ -499,9 +499,11 @@ const httpRequest = function(options) {
 	assert(typeof options === `object`);
 	return new Promise((resolve, reject) => {
 		let requ = https.request(options);
-		requ.on(`error`, reject);
-		requ.on(`timeout`, reject);
 		requ.on(`response`, resolve);
+		requ.on(`error`, reject);
+		requ.on(`timeout`, () =>
+			reject(new UpstreamError(
+				`upstream api request timed-out after ${requ.timeout} ms`)));
 		requ.end();
 	});
 };
