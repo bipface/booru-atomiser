@@ -103,6 +103,7 @@ const handleRequest = function(
 		requHeaderTbl.set(k.toLowerCase(), v);};
 
 	let ua = requHeaderTbl.get(`user-agent`) || ``;
+	console.log(`self request user-agent:`, ua);
 	let respHeaders = {
 		...baseHeaders,
 		[`content-type`] : `application/atom+xml; charset=utf-8`,};
@@ -231,8 +232,8 @@ const getAtomXmlEntry = function(domain, postInfo) {
 	return `<entry>
 		<title>Post #${postInfo.postId}</title>
 		<id>${xmlEscape(md5Uri(postInfo.md5))}</id>
-		<updated>${tryFormatTimestamp(postInfo.updated)}</updated>
-		<published>${tryFormatTimestamp(postInfo.created)}</published>
+		${tryCreateTimestampElementXml(`published`, postInfo.created)}
+		${tryCreateTimestampElementXml(`updated`, postInfo.updated)}
 		<!--author>(artist name)</author-->
 
 		<link rel='alternate'
@@ -262,7 +263,7 @@ const getAtomXmlFooter = function(selfUrl, domain, params, greatestUpdateTime) {
 		<subtitle>${xmlEscape(params.get(`tags`) || ``)}</subtitle>
 		<id>${xmlEscape(getFeedIdUri(domain, params))}</id>
 		<author><name>${xmlEscape(domain.origin)}</name></author>
-		<updated>${tryFormatTimestamp(greatestUpdateTime)}</updated>
+		${tryCreateTimestampElementXml(`updated`, greatestUpdateTime)}
 
 		<link rel='self' href='${xmlEscape(selfUrl.href)}'/>
 		<link rel='alternate'
@@ -277,6 +278,13 @@ const getFeedIdUri = function(domain, params) {
 	h.update(domain.origin);
 	h.update(params.get(`tags`) || ``);
 	return md5Uri(h.digest(`hex`));
+};
+
+const tryCreateTimestampElementXml = function(tag, ts) {
+	try {
+		return `<${tag}>${ts.toISOString()}</${tag}>`;
+	} catch (_) {
+		return `<!--${tag}>(invalid date)</${tag}-->`;};
 };
 
 const getPostInfoApiUrl = function(domain, params) {
@@ -567,13 +575,6 @@ const md5Uri = function(md5Hex) {
 		.replace(/\=/g, ``);
 
 	return `ni:///md5;`+b64;
-};
-
-const tryFormatTimestamp = function(ts) {
-	try {
-		return ts.toISOString();
-	} catch (_) {
-		return (new Date(0)).toISOString();};
 };
 
 /* -------------------------------------------------------------------------- */
