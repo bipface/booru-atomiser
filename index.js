@@ -103,7 +103,7 @@ const handleRequest = function(
 		requHeaderTbl.set(k.toLowerCase(), v);};
 
 	let ua = requHeaderTbl.get(`user-agent`) || ``;
-	console.log(`self request user-agent:`, ua);
+	console.log(`incoming request user-agent:`, ua);
 	let respHeaders = {
 		...baseHeaders,
 		[`content-type`] : `application/atom+xml; charset=utf-8`,};
@@ -114,7 +114,7 @@ const handleRequest = function(
 		selfUrl.pathname = requPath;
 		selfUrl.search = params.toString();
 	} catch (_) {};
-	console.log(`self request href:`, selfUrl.href);
+	console.log(`incoming request href:`, selfUrl.href);
 
 	return {
 		statusCode : 200,
@@ -194,14 +194,14 @@ const getAtomXmlFromPostInfos = function(selfUrl, domain, params, postInfos) {
 			if (value.updated > this.greatestUpdateTime) {
 				this.greatestUpdateTime = value.updated;};
 
-			return {value : getAtomXmlEntry(domain, value)};
+			return {value : getAtomXmlEntry(domain, params, value)};
 		},
 
 		[Symbol.asyncIterator]() {return this;},
 	};
 };
 
-const xmlEscape = function(chars) {
+const xmlEsc = function(chars) {
 	let s = ``;
 	for (let c of chars) {
 		switch (c) {
@@ -218,11 +218,11 @@ const xmlEscape = function(chars) {
 
 const atomXmlHeader = `<?xml version='1.0' encoding='utf-8'?>
 	<feed xmlns='http://www.w3.org/2005/Atom'>
-		<generator uri='${xmlEscape(documentationHref)}' version='1.0'>
-			${xmlEscape(serviceTitle)}
+		<generator uri='${xmlEsc(documentationHref)}' version='1.0'>
+			${xmlEsc(serviceTitle)}
 		</generator>\n`;
 
-const getAtomXmlEntry = function(domain, postInfo) {
+const getAtomXmlEntry = function(domain, params, postInfo) {
 	assert(typeof domain === `object` && domain !== null);
 	assert(typeof postInfo === `object`);
 
@@ -231,26 +231,44 @@ const getAtomXmlEntry = function(domain, postInfo) {
 
 	return `<entry>
 		<title>Post #${postInfo.postId}</title>
-		<id>${xmlEscape(md5Uri(postInfo.md5))}</id>
+		<id>${xmlEsc(md5Uri(postInfo.md5))}</id>
 		${tryCreateTimestampElementXml(`published`, postInfo.created)}
 		${tryCreateTimestampElementXml(`updated`, postInfo.updated)}
 		<!--author>(artist name)</author-->
 
 		<link rel='alternate'
-			href='${xmlEscape(postPageUrl(domain, postInfo.postId).href)}'/>
+			href='${xmlEsc(postPageUrl(domain, postInfo.postId).href)}'/>
 
 		<!--link rel='related' href='(source link(s))'/-->
 
-		<link rel='enclosure' href='${xmlEscape(postInfo.mediaUrl.href)}'/>
+		<link rel='enclosure' href='${xmlEsc(postInfo.mediaUrl.href)}'/>
 
-		<content type='xhtml'>
-			<div xmlns='http://www.w3.org/1999/xhtml'>
-				<a href='${xmlEscape(postInfo.mediaUrl.href)}'>
-					<img src='${xmlEscape(postInfo.thumbnailUrl.href)}'></img>
-				</a>
-			</div>
-		</content>
+		${getAtomXmlEntryContent(domain, params, postInfo)}
+
 	</entry>\n`;
+};
+
+const getAtomXmlEntryContent = function(domain, params, postInfo) {
+	let mode = params.get(`content`) || ``;
+	switch (mode) {
+		case ``:
+		case `thumbnail-link` :
+			return `<content type='xhtml'>
+				<div xmlns='http://www.w3.org/1999/xhtml'>
+					<a href='${xmlEsc(postInfo.mediaUrl.href)}'>
+						<img src='${xmlEsc(postInfo.thumbnailUrl.href)}'></img>
+					</a>
+				</div>
+			</content>`;
+
+		case `bare-link` :
+			return `<content src='${xmlEsc(postInfo.mediaUrl.href)}'/>`;
+
+		default :
+			throw new ClientError(`unrecognised content mode "${mode}"`);
+	};
+
+	assert(false);
 };
 
 const getAtomXmlFooter = function(selfUrl, domain, params, greatestUpdateTime) {
@@ -259,17 +277,17 @@ const getAtomXmlFooter = function(selfUrl, domain, params, greatestUpdateTime) {
 	assert(greatestUpdateTime instanceof Date);
 
 	return `
-		<title>${xmlEscape(domain.origin+` post index`)}</title>
-		<subtitle>${xmlEscape(params.get(`tags`) || ``)}</subtitle>
-		<id>${xmlEscape(getFeedIdUri(domain, params))}</id>
-		<author><name>${xmlEscape(domain.origin)}</name></author>
+		<title>${xmlEsc(domain.origin+` post index`)}</title>
+		<subtitle>${xmlEsc(params.get(`tags`) || ``)}</subtitle>
+		<id>${xmlEsc(getFeedIdUri(domain, params))}</id>
+		<author><name>${xmlEsc(domain.origin)}</name></author>
 		${tryCreateTimestampElementXml(`updated`, greatestUpdateTime)}
 
-		<link rel='self' href='${xmlEscape(selfUrl.href)}'/>
+		<link rel='self' href='${xmlEsc(selfUrl.href)}'/>
 		<link rel='alternate'
-			href='${xmlEscape(getPostIndexPageUrl(domain, params).href)}'/>
+			href='${xmlEsc(getPostIndexPageUrl(domain, params).href)}'/>
 		<link rel='via'
-			href='${xmlEscape(getPostInfoApiUrl(domain, params).href)}'/>
+			href='${xmlEsc(getPostInfoApiUrl(domain, params).href)}'/>
 	</feed>\n`;
 };
 
@@ -359,7 +377,7 @@ const getPostInfos = function(
 
 	let url = getPostInfoApiUrl(domain, params);
 
-	console.log(`booru request href:`, url.href);
+	console.log(`upstream request href:`, url.href);
 
 	return {
 		init : async function() {
@@ -374,8 +392,8 @@ const getPostInfos = function(
 					[`user-agent`] : userAgentName(requestorUserAgent),},
 				timeout : 10000,});
 
-			console.log(`booru response status:`, resp.statusCode);
-			console.log(`booru response headers:`, resp.headers);
+			console.log(`upstream response status:`, resp.statusCode);
+			console.log(`upstream response headers:`, resp.headers);
 
 			if (resp.statusCode !== 200) {
 				throw new UpstreamError(
