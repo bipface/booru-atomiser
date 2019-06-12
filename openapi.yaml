@@ -12,8 +12,36 @@ paths:
           description: 'Atom feed'
           content:
             'application/atom+xml':
-              example: >-
-                <feed xmlns='http://www.w3.org/2005/Atom'/>
+              example: |-
+                <?xml version="1.0" encoding="utf-8"?>
+                <feed xmlns="http://www.w3.org/2005/Atom">
+                  <generator uri="https://app.swaggerhub.com/apis-docs/bipface/booru-atomiser" version="1.0">Booru Atomiser</generator>
+                  <entry>
+                    <title>Post #3258616</title>
+                    <id>ni:///md5;cgXEGDi_KNaYOqmPsGARtQ</id>
+                    <published>(invalid date)</published>
+                    <updated>2019-06-11T05:48:33.000Z</updated>
+                    <link rel="alternate" href="https://rule34.xxx/index.php?page=post&amp;s=view&amp;id=3258616"/>
+                    <link rel="enclosure" href="https://img.rule34.xxx/images/2916/7205c41838bf28d6983aa98fb06011b5.jpeg"/>
+                    <content type="xhtml">
+                      <div xmlns="http://www.w3.org/1999/xhtml">
+                        <a href="https://img.rule34.xxx/images/2916/7205c41838bf28d6983aa98fb06011b5.jpeg">
+                          <img src="https://img.rule34.xxx/thumbnails/2916/thumbnail_7205c41838bf28d6983aa98fb06011b5.jpg"/>
+                        </a>
+                      </div>
+                    </content>
+                  </entry>
+                  <title>https://rule34.xxx post index</title>
+                  <subtitle>rating:safe</subtitle>
+                  <id>ni:///md5;xDOlzP0fLPfNYf9EIo4B0g</id>
+                  <author>
+                    <name>https://rule34.xxx</name>
+                  </author>
+                  <updated>2019-06-11T05:48:33.000Z</updated>
+                  <link rel="self" href="https://127.0.0.1/r34xxx?limit=1&amp;tags=rating%3Asafe&amp;content=thumbnail-link"/>
+                  <link rel="alternate" href="https://rule34.xxx/index.php?page=post&amp;s=list&amp;tags=rating%3Asafe"/>
+                  <link rel="via" href="https://rule34.xxx/?page=dapi&amp;s=post&amp;q=index&amp;json=1&amp;limit=1&amp;tags=rating%3Asafe"/>
+                </feed>
       description: >-
         Performs a Booru gallery search and formats the results as an [Atom](https://en.wikipedia.org/wiki/Atom_%28Web_standard%29) feed.
       parameters:
@@ -23,7 +51,9 @@ paths:
           required: true
           schema:
             type: string
-            enum: ['r34xxx', 'gelbooru']
+            enum:
+              - 'r34xxx'
+              - 'gelbooru'
         - name: tags
           in: query
           description: 'Search expression'
@@ -52,3 +82,18 @@ paths:
             type: string
             minimum: 0
             maximum: 1000
+        - name: content
+          in: query
+          description: >-
+            Format of each entry's `<content>` element.
+              * `thumbnail-link` - Content will be of `type='xhtml'`, enclosing an XHTML document fragment of the form `<div><a href='{mediaURI}'><img src='{thumbnailURI}'/><a></div>`.
+              * `bare-link` - Content elements will be empty, with an attribute `src` indicating the direct URI of the media resource.
+              * `text-link` - Content will be of `type='text'`, consisting of only the direct URI of the media resource. Provided for compatibility with feed readers which aren't standards-compliant.
+          required: false
+          schema:
+            type: string
+            enum:
+              - 'thumbnail-link'
+              - 'bare-link'
+              - 'text-link'
+            default: 'thumbnail-link'

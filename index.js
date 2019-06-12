@@ -249,20 +249,25 @@ const getAtomXmlEntry = function(domain, params, postInfo) {
 };
 
 const getAtomXmlEntryContent = function(domain, params, postInfo) {
+	let mediaHref = postInfo.mediaUrl.href;
+
 	let mode = params.get(`content`) || ``;
 	switch (mode) {
 		case ``:
 		case `thumbnail-link` :
 			return `<content type='xhtml'>
 				<div xmlns='http://www.w3.org/1999/xhtml'>
-					<a href='${xmlEsc(postInfo.mediaUrl.href)}'>
+					<a href='${xmlEsc(mediaHref)}'>
 						<img src='${xmlEsc(postInfo.thumbnailUrl.href)}'></img>
 					</a>
 				</div>
 			</content>`;
 
+		case `text-link` :
+			return `<content type='text'>${xmlEsc(mediaHref)}</content>`;
+
 		case `bare-link` :
-			return `<content src='${xmlEsc(postInfo.mediaUrl.href)}'/>`;
+			return `<content src='${xmlEsc(mediaHref)}'/>`;
 
 		default :
 			throw new ClientError(`unrecognised content mode "${mode}"`);
