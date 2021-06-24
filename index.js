@@ -62,7 +62,7 @@ exports.handleLambdaProxyRequest = async function({
 
 const domainTbl = {
 	gelbooru : {kind : `gelbooru`, origin : `https://gelbooru.com`,
-		mediaOrigin : `https://img2.gelbooru.com`},
+		mediaOrigin : `https://img3.gelbooru.com`},
 
 	r34xxx : {kind : `gelbooru`, origin : `https://rule34.xxx`,
 		mediaOrigin : `https://img.rule34.xxx`},
@@ -227,7 +227,10 @@ const getAtomXmlEntry = function(domain, params, postInfo) {
 	assert(typeof postInfo === `object`);
 
 	if (postInfo === null) {
-		return undefined;};
+		throw new Error(`failed to generate atom entry - postInfo is null`);};
+
+	if (!((postInfo.mediaUrl) instanceof URL)) {
+		throw new Error(`failed to generate atom entry - malformed mediaUrl`);};
 
 	return `<entry>
 		<title>Post #${postInfo.postId}</title>
@@ -257,8 +260,10 @@ const getAtomXmlEntryContent = function(domain, params, postInfo) {
 		case `thumbnail-link` :
 			return `<content type='xhtml'>
 				<div xmlns='http://www.w3.org/1999/xhtml'>
-					<a href='${xmlEsc(mediaHref)}'>
-						<img src='${xmlEsc(postInfo.thumbnailUrl.href)}'></img>
+					<a href='${xmlEsc(mediaHref)}' rel='noreferrer'
+						referrerpolicy='no-referrer'>
+						<img src='${xmlEsc(postInfo.thumbnailUrl.href)}'
+							referrerpolicy='no-referrer'></img>
 					</a>
 				</div>
 			</content>`;
@@ -456,8 +461,12 @@ const postInfoFromGelbooruApiPost = function(domain, post) {
 };
 
 const gelbooruMediaUrl = function(origin, dir, filename) {
-	if (typeof dir !== `string` || typeof filename !== `string`) {
+	if ((typeof dir !== `string` && !isInt(dir))
+		|| typeof filename !== `string`)
+	{
 		return null;};
+	/* 2021-06-24 - note: r34xxx have begun providing integers
+		in the .directory field; from gelbooru they're still strings */
 
 	if (!/^(\w+)(\.\w+)$/.test(filename)) {
 		return null;};
@@ -468,7 +477,9 @@ const gelbooruMediaUrl = function(origin, dir, filename) {
 };
 
 const gelbooruMediaThumbnailUrl = function(origin, dir, filename) {
-	if (typeof dir !== `string` || typeof filename !== `string`) {
+	if ((typeof dir !== `string` && !isInt(dir))
+		|| typeof filename !== `string`)
+	{
 		return null;};
 
 	let match = /^(\w+)(\.\w+)$/.exec(filename);
